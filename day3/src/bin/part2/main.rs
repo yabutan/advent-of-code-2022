@@ -35,7 +35,7 @@ fn find_duplicated_char(first: &str, second: &str, third: &str) -> char {
 
     assert_eq!(duplicated.len(), 1);
 
-    *duplicated.iter().next().unwrap()
+    *duplicated.iter().next().expect("expected one char")
 }
 
 fn calc_priority(r: impl BufRead) -> u32 {
