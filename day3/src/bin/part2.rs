@@ -7,12 +7,10 @@ use std::io::{BufRead, BufReader};
 use itertools::Itertools;
 
 fn get_priority(c: char) -> u32 {
-    if c.is_ascii_lowercase() {
-        ((c as u8) - b'a' + 1) as u32
-    } else if c.is_ascii_uppercase() {
-        ((c as u8) - b'A' + 27) as u32
-    } else {
-        panic!("invalid input {}", c);
+    match c {
+        'a'..='z' => u32::from(c) - u32::from('a') + 1,
+        'A'..='Z' => u32::from(c) - u32::from('A') + 27,
+        _ => panic!("invalid input {}", c),
     }
 }
 
