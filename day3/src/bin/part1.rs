@@ -23,23 +23,13 @@ fn split_half(line: &str) -> (&str, &str) {
 }
 
 fn find_duplicated_char(left: &str, right: &str) -> char {
-    // to_set
     let left: HashSet<char> = HashSet::from_iter(left.chars());
     let right: HashSet<char> = HashSet::from_iter(right.chars());
 
-    // grouping and get duplicated char
-    let duplicated: HashSet<char> = left
-        .iter()
-        .chain(right.iter())
-        .counts()
-        .iter()
-        .filter(|(_, &v)| v > 1)
-        .map(|(&k, _)| *k)
-        .collect();
-
+    let duplicated: Vec<char> = left.intersection(&right).cloned().collect();
     assert_eq!(duplicated.len(), 1);
 
-    *duplicated.iter().next().expect("expected one char")
+    duplicated[0]
 }
 
 fn calc_priority(r: impl BufRead) -> u32 {
