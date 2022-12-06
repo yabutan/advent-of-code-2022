@@ -9,9 +9,9 @@ use nom::IResult;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Action {
-    time: u8,
-    from: u8,
-    to: u8,
+    time: u32,
+    from: u32,
+    to: u32,
 }
 
 pub trait CraneMove {
@@ -19,28 +19,31 @@ pub trait CraneMove {
 }
 
 // for Part1
-pub struct Crane9000;
+pub struct CraneMover9000;
 
-impl CraneMove for Crane9000 {
-    fn do_move(&self, stacks: &mut [Vec<char>], action: &Action) {
-        for _ in 0..action.time {
-            let a = stacks[(action.from - 1) as usize].pop().unwrap();
-            stacks[(action.to - 1) as usize].push(a);
-        }
+impl CraneMove for CraneMover9000 {
+    fn do_move(&self, stacks: &mut [Vec<char>], Action { time, from, to }: &Action) {
+        let crates = &mut stacks[(from - 1) as usize];
+
+        let drained: Vec<char> = crates
+            .drain((crates.len() - *time as usize)..)
+            .rev()
+            .collect();
+
+        stacks[(to - 1) as usize].extend(drained);
     }
 }
 
 // for Part2
-pub struct Crane9001;
+pub struct CraneMover9001;
 
-impl CraneMove for Crane9001 {
-    fn do_move(&self, stacks: &mut [Vec<char>], action: &Action) {
-        let list_from = &mut stacks[(action.from - 1) as usize];
+impl CraneMove for CraneMover9001 {
+    fn do_move(&self, stacks: &mut [Vec<char>], Action { time, from, to }: &Action) {
+        let crates = &mut stacks[(from - 1) as usize];
 
-        let index_of_begin = list_from.len() - action.time as usize;
-        let moved: Vec<char> = list_from.drain(index_of_begin..).collect();
+        let drained: Vec<char> = crates.drain((crates.len() - *time as usize)..).collect();
 
-        stacks[(action.to - 1) as usize].extend(moved);
+        stacks[(to - 1) as usize].extend(drained);
     }
 }
 
@@ -71,13 +74,7 @@ pub fn simulate(mut r: impl BufRead, crane: impl CraneMove) -> String {
     }
 
     // read top of stacks
-    let mut ret = String::new();
-    for x in stacks {
-        if let Some(c) = x.last() {
-            ret.push(*c);
-        }
-    }
-    ret
+    stacks.iter().filter_map(|s| s.last()).collect()
 }
 
 fn parse_crate_stacks(text: &str) -> Vec<Vec<char>> {
@@ -120,9 +117,9 @@ fn parse_crate_num(input: &str) -> IResult<&str, u32> {
 }
 
 fn parse_action(input: &str) -> IResult<&str, Action> {
-    let (input, time) = preceded(tag("move "), map_res(digit1, str::parse::<u8>))(input)?;
-    let (input, from) = preceded(tag(" from "), map_res(digit1, str::parse::<u8>))(input)?;
-    let (input, to) = preceded(tag(" to "), map_res(digit1, str::parse::<u8>))(input)?;
+    let (input, time) = preceded(tag("move "), map_res(digit1, str::parse::<u32>))(input)?;
+    let (input, from) = preceded(tag(" from "), map_res(digit1, str::parse::<u32>))(input)?;
+    let (input, to) = preceded(tag(" to "), map_res(digit1, str::parse::<u32>))(input)?;
     Ok((input, Action { time, from, to }))
 }
 
@@ -175,11 +172,11 @@ move 2 from 2 to 1
 move 1 from 1 to 2
 "#;
 
-        let ret = simulate(text.as_bytes(), Crane9000);
+        let ret = simulate(text.as_bytes(), CraneMover9000);
         println!("answer:{:?}", ret);
         assert_eq!(ret, "CMZ");
 
-        let ret = simulate(text.as_bytes(), Crane9001);
+        let ret = simulate(text.as_bytes(), CraneMover9001);
         println!("answer:{:?}", ret);
         assert_eq!(ret, "MCD");
     }
@@ -210,7 +207,7 @@ move 1 from 1 to 2
         };
 
         let mut stacks = vec![vec!['A'], vec!['B'], vec!['C', 'D']];
-        Crane9000.do_move(&mut stacks, &action);
+        CraneMover9000.do_move(&mut stacks, &action);
 
         println!("stacks:{:?}", stacks);
         assert_eq!(stacks[0], vec!['A', 'D', 'C']);
@@ -218,7 +215,7 @@ move 1 from 1 to 2
         assert_eq!(stacks[2], vec![]);
 
         let mut stacks = vec![vec!['A'], vec!['B'], vec!['C', 'D']];
-        Crane9001.do_move(&mut stacks, &action);
+        CraneMover9001.do_move(&mut stacks, &action);
 
         println!("stacks:{:?}", stacks);
         assert_eq!(stacks[0], vec!['A', 'C', 'D']);
