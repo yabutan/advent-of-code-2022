@@ -2,8 +2,6 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use itertools::Itertools;
-
 fn get_priority(c: char) -> u32 {
     match c {
         'a'..='z' => u32::from(c) - u32::from('a') + 1,
