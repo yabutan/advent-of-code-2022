@@ -204,7 +204,7 @@ dir d"#;
     }
 
     #[test]
-    fn test_read_buffers() {
+    fn test_read_commands() {
         let commands = read_commands(include_str!("../data/sample.txt").as_bytes()).unwrap();
         println!("{:#?}", commands);
 
