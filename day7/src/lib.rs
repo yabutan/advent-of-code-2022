@@ -7,38 +7,14 @@ use nom::sequence::{preceded, tuple};
 use nom::IResult;
 use std::collections::HashMap;
 use std::io::BufRead;
-use std::path::{Path, PathBuf};
-
-const TOTAL_STORAGE: u64 = 70000000;
-const NEED_STORAGE: u64 = 30000000;
+use std::path::PathBuf;
 
 pub struct Directory {
     pub path: PathBuf,
     pub size: u64,
 }
 
-pub fn find_directory(r: impl BufRead) -> anyhow::Result<Directory> {
-    let directories = calc_size_of_directories(r)?;
-
-    let root_size = directories
-        .iter()
-        .find(|d| d.path == Path::new("/"))
-        .expect("root directory not found")
-        .size;
-
-    let unused_size = TOTAL_STORAGE - root_size;
-    let threshold = NEED_STORAGE - unused_size;
-    println!("unused_size: {}", unused_size);
-    println!("threshold: {}", threshold);
-
-    Ok(directories
-        .into_iter()
-        .filter(|d| d.size >= threshold)
-        .min_by_key(|d| d.size)
-        .unwrap())
-}
-
-fn calc_size_of_directories(r: impl BufRead) -> anyhow::Result<Vec<Directory>> {
+pub fn calc_size_of_directories(r: impl BufRead) -> anyhow::Result<Vec<Directory>> {
     let commands = read_commands(r)?;
     let mut path = PathBuf::new();
 
@@ -53,7 +29,7 @@ fn calc_size_of_directories(r: impl BufRead) -> anyhow::Result<Vec<Directory>> {
                 }
                 ChangeDir::MoveOut => {
                     let parent = path.parent().unwrap();
-                    path = PathBuf::from(parent);
+                    path = parent.to_path_buf();
                 }
                 ChangeDir::MoveIn(dir) => {
                     path.push(dir);
@@ -227,39 +203,9 @@ dir d"#;
         assert_eq!(nodes[3], Node::Dir("d".to_string()));
     }
 
-    const SAMPLE_INPUT: &str = r#"$ cd /
-$ ls
-dir a
-14848514 b.txt
-8504156 c.dat
-dir d
-$ cd a
-$ ls
-dir e
-29116 f
-2557 g
-62596 h.lst
-$ cd e
-$ ls
-584 i
-$ cd ..
-$ cd ..
-$ cd d
-$ ls
-4060174 j
-8033020 d.log
-5626152 d.ext
-7214296 k"#;
-
-    #[test]
-    fn test_pick_should_delete() {
-        let d = find_directory(BufReader::new(SAMPLE_INPUT.as_bytes())).unwrap();
-        assert_eq!(d.size, 24933642);
-    }
-
     #[test]
     fn test_read_buffers() {
-        let commands = read_commands(SAMPLE_INPUT.as_bytes()).unwrap();
+        let commands = read_commands(include_str!("../data/sample.txt").as_bytes()).unwrap();
         println!("{:#?}", commands);
 
         assert_eq!(commands.len(), 10);
