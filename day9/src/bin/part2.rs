@@ -7,8 +7,8 @@ fn main() -> anyhow::Result<()> {
     let r = BufReader::new(File::open("./day9/data/input.txt")?);
 
     let mut rope = Rope::new(10);
-    let ret = simulate_tail(r, &mut rope);
-    println!("answer: {}", ret.len());
+    let tails = simulate_tail(r, &mut rope);
+    println!("answer: {}", tails.len());
 
     Ok(())
 }
