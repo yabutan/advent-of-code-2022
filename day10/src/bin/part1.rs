@@ -27,13 +27,13 @@ enum Instruction {
     AddX(i32),
 }
 
-struct Cpu<F> {
+struct Crt<F> {
     cycle_count: u32,
     x: i32,
     callback: F,
 }
 
-impl<F: FnMut(&u32, &i32)> Cpu<F> {
+impl<F: FnMut(&u32, &i32)> Crt<F> {
     fn with_callback(callback: F) -> Self {
         Self {
             cycle_count: 0,
@@ -65,7 +65,7 @@ impl<F: FnMut(&u32, &i32)> Cpu<F> {
 fn simulate(r: impl BufRead) -> Vec<(u32, i32, i32)> {
     let mut signals = Vec::new();
 
-    let mut cpu = Cpu::with_callback(|cycle_count, x| {
+    let mut crt = Crt::with_callback(|cycle_count, x| {
         if matches!(cycle_count, 20 | 60 | 100 | 140 | 180 | 220) {
             let signal_strength = *cycle_count as i32 * x;
 
@@ -76,7 +76,7 @@ fn simulate(r: impl BufRead) -> Vec<(u32, i32, i32)> {
     for line in r.lines() {
         let line = line.unwrap();
         let (_, instruction) = parse_instruction(&line).expect("parse error");
-        cpu.run(&instruction);
+        crt.run(&instruction);
     }
 
     signals

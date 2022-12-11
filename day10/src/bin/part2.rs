@@ -18,11 +18,11 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn draw(w: &mut impl Write, r: impl BufRead) {
-    let mut cpu = Cpu::with_writer(w);
+    let mut crt = Crt::with_writer(w);
     for line in r.lines() {
         let line = line.unwrap();
         let (_, instruction) = parse_instruction(&line).expect("parse error");
-        cpu.run(&instruction);
+        crt.run(&instruction);
     }
 }
 
@@ -34,13 +34,13 @@ enum Instruction {
 
 const WIDTH: u32 = 40;
 
-struct Cpu<'a, W> {
+struct Crt<'a, W> {
     cycle_count: u32,
     x: i32,
     w: &'a mut W,
 }
 
-impl<'a, W: Write> Cpu<'a, W> {
+impl<'a, W: Write> Crt<'a, W> {
     fn with_writer(w: &'a mut W) -> Self {
         Self {
             cycle_count: 0,
