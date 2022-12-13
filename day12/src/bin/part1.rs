@@ -6,40 +6,21 @@ use termion::{color, style};
 
 fn main() -> anyhow::Result<()> {
     let r = BufReader::new(File::open("./day12/data/input.txt")?);
-    //let r = BufReader::new(File::open("./day12/data/input2.txt")?);
-    let ret = simulate(r).unwrap();
-    println!("answer: {}", ret.len() - 1);
-
+    let path = simulate(r).expect("Failed to simulate");
+    println!("answer: {}", path.len() - 1);
     Ok(())
 }
 
 fn simulate(r: impl BufRead) -> Option<Vec<Pos>> {
     let mut finder = Finder::with_reader(r);
 
-    loop {
-        finder.round();
-        if finder.done {
-            break;
-        }
+    while finder.do_round() {}
 
-        // println!(
-        //     "{}----------------------{}",
-        //     color::Fg(color::Green),
-        //     style::Reset,
-        // );
-        // finder.display_states();
-    }
-
-    // finder.states.iter().for_each(|(pos, state)| {
-    //     println!("{:?} {:?}", pos, state);
-    // });
-
-    //let state = &finder.states[&Pos { x: 0, y: 0 }];
     let state = &finder.states[&finder.end_pos];
     match state {
-        State::Fix(n) => {
+        State::Certain(path) => {
             finder.display_path();
-            Some(n.clone())
+            Some(path.clone())
         }
         _ => None,
     }
@@ -54,11 +35,11 @@ struct Pos {
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum State {
     Infinite,
-    Temp(Vec<Pos>),
-    Fix(Vec<Pos>),
+    Tentative(Vec<Pos>),
+    Certain(Vec<Pos>),
 }
 
-fn to_char(c: char) -> u32 {
+fn to_u32(c: char) -> u32 {
     match c {
         'S' => 'a' as u32,
         'E' => 'z' as u32,
@@ -74,11 +55,11 @@ struct Finder {
     // 最短距離
     states: HashMap<Pos, State>,
     end_pos: Pos,
-    done: bool,
 }
 
 impl Finder {
     fn with_reader(r: impl BufRead) -> Self {
+        // heightmap
         let data: Vec<Vec<char>> = r
             .lines()
             .map(|line| line.unwrap().chars().collect())
@@ -88,96 +69,47 @@ impl Finder {
         let len_x = data[0].len() as u32;
         let len_y = data.len() as u32;
 
-        let mut end_pos = None;
-
         // init states
-        let mut states = HashMap::new();
-        for y in 0..len_y {
-            for x in 0..len_x {
-                let pos = Pos { x, y };
-                let state = match data[y as usize][x as usize] {
-                    'S' => State::Temp(vec![pos]),
-                    'E' => {
-                        end_pos = Some(pos);
-                        State::Infinite
-                    }
-                    _ => State::Infinite,
-                };
-                states.insert(pos, state);
+        let (states, end_pos) = {
+            let mut end_pos = None;
+            let mut states = HashMap::new();
+            for y in 0..len_y {
+                for x in 0..len_x {
+                    let pos = Pos { x, y };
+                    let state = match data[y as usize][x as usize] {
+                        'S' => State::Tentative(vec![pos]),
+                        'E' => {
+                            end_pos = Some(pos);
+                            State::Infinite
+                        }
+                        _ => State::Infinite,
+                    };
+                    states.insert(pos, state);
+                }
             }
-        }
+
+            (states, end_pos.expect("Failed to find end pos"))
+        };
 
         Self {
             data,
             states,
             len_x,
             len_y,
-            end_pos: end_pos.unwrap(),
-            done: false,
+            end_pos,
         }
-    }
-
-    fn get_square_toward(&self, pos: &Pos) -> Vec<Pos> {
-        let data = &self.data;
-
-        let current = to_char(data[pos.y as usize][pos.x as usize]);
-        let range = ..=(current + 1);
-
-        let mut candidates = Vec::new();
-
-        if pos.x > 0 {
-            let left = to_char(data[pos.y as usize][pos.x as usize - 1]);
-            if range.contains(&left) {
-                candidates.push(Pos {
-                    x: pos.x - 1,
-                    y: pos.y,
-                });
-            }
-        }
-
-        if pos.x < self.len_x - 1 {
-            let right = to_char(data[pos.y as usize][pos.x as usize + 1]);
-            if range.contains(&right) {
-                candidates.push(Pos {
-                    x: pos.x + 1,
-                    y: pos.y,
-                });
-            }
-        }
-
-        if pos.y > 0 {
-            let up = to_char(data[pos.y as usize - 1][pos.x as usize]);
-            if range.contains(&up) {
-                candidates.push(Pos {
-                    x: pos.x,
-                    y: pos.y - 1,
-                });
-            }
-        }
-
-        if pos.y < self.len_y - 1 {
-            let down = to_char(data[pos.y as usize + 1][pos.x as usize]);
-            if range.contains(&down) {
-                candidates.push(Pos {
-                    x: pos.x,
-                    y: pos.y + 1,
-                });
-            }
-        }
-
-        candidates
     }
 
     fn get_square(&self, pos: &Pos) -> Vec<Pos> {
         let data = &self.data;
 
-        let current = to_char(data[pos.y as usize][pos.x as usize]);
-        let range = (current - 1)..;
+        let current = to_u32(data[pos.y as usize][pos.x as usize]);
+        let range = ..=(current + 1);
 
         let mut candidates = Vec::new();
 
         if pos.x > 0 {
-            let left = to_char(data[pos.y as usize][pos.x as usize - 1]);
+            let left = to_u32(data[pos.y as usize][pos.x as usize - 1]);
             if range.contains(&left) {
                 candidates.push(Pos {
                     x: pos.x - 1,
@@ -187,7 +119,7 @@ impl Finder {
         }
 
         if pos.x < self.len_x - 1 {
-            let right = to_char(data[pos.y as usize][pos.x as usize + 1]);
+            let right = to_u32(data[pos.y as usize][pos.x as usize + 1]);
             if range.contains(&right) {
                 candidates.push(Pos {
                     x: pos.x + 1,
@@ -197,7 +129,7 @@ impl Finder {
         }
 
         if pos.y > 0 {
-            let up = to_char(data[pos.y as usize - 1][pos.x as usize]);
+            let up = to_u32(data[pos.y as usize - 1][pos.x as usize]);
             if range.contains(&up) {
                 candidates.push(Pos {
                     x: pos.x,
@@ -207,7 +139,7 @@ impl Finder {
         }
 
         if pos.y < self.len_y - 1 {
-            let down = to_char(data[pos.y as usize + 1][pos.x as usize]);
+            let down = to_u32(data[pos.y as usize + 1][pos.x as usize]);
             if range.contains(&down) {
                 candidates.push(Pos {
                     x: pos.x,
@@ -219,113 +151,87 @@ impl Finder {
         candidates
     }
 
-    fn round(&mut self) {
-        // 未確定から、短いところを選定
+    fn do_round(&mut self) -> bool {
+        // 未確定ノードから、一番近いものを選定
         let (pos, path) = {
-            let ret = self
+            let node = self
                 .states
                 .iter_mut()
-                .filter(|(_, state)| matches!(state, State::Temp(_)))
+                .filter(|(_, state)| matches!(state, State::Tentative(_)))
                 .min_by_key(|(_, state)| match state {
-                    State::Temp(path) => path.len(),
+                    State::Tentative(path) => path.len(),
                     _ => unreachable!("unreachable"),
                 });
 
-            let Some((pos, state)) = ret else {
-                self.done = true;
-                return;
+            let Some((pos, state)) = node else {
+                // 未確定ノードがない場合、探索終了。
+                return false;
             };
 
-            // 最小経路として確定
+            // 最短経路として確定する
             let path = match state {
-                State::Temp(path) => path.clone(),
+                State::Tentative(path) => path.clone(),
                 _ => unreachable!("unreachable"),
             };
-            *state = State::Fix(path.clone());
+            *state = State::Certain(path.clone());
             (*pos, path)
         };
 
         //  隣接座標を取得
-        //let candidates = self.get_square(&pos);
-        let candidates = self.get_square_toward(&pos);
-        for x in candidates {
-            let state = &self.states[&x];
-
-            match state {
+        let candidates = self.get_square(&pos);
+        for candidate_pos in candidates {
+            match &self.states[&candidate_pos] {
                 State::Infinite => {
                     let mut path = path.clone();
-                    path.push(x);
-                    self.states.insert(x, State::Temp(path));
+                    path.push(pos);
+                    self.states.insert(candidate_pos, State::Tentative(path));
                 }
-                State::Temp(n2) => {
+                State::Tentative(old_path) => {
                     // 距離が小さければ採用。
-                    if path.len() + 1 < n2.len() {
+                    if path.len() + 1 < old_path.len() {
                         let mut path = path.clone();
-                        path.push(x);
-                        self.states.insert(x, State::Temp(path));
+                        path.push(pos);
+                        self.states.insert(candidate_pos, State::Tentative(path));
                     }
                 }
                 _ => continue,
             }
         }
-    }
-
-    fn display_states(&self) {
-        for y in 0..self.len_y {
-            for x in 0..self.len_x {
-                let state = self.states.get(&Pos { x, y }).unwrap();
-
-                let s = self.data[y as usize][x as usize].to_string();
-                match state {
-                    State::Infinite => {
-                        print!("{}{}{}", color::Fg(color::White), s, style::Reset);
-                    }
-                    State::Temp(n) => {
-                        print!("{}{}{}", color::Fg(color::LightBlue), s, style::Reset);
-                    }
-                    State::Fix(_) => {
-                        print!("{}{}{}", color::Fg(color::LightGreen), s, style::Reset);
-                    }
-                };
-            }
-            println!()
-        }
+        true
     }
 
     fn display_path(&self) {
-        let a = &self.states[&self.end_pos];
-
-        let path: HashSet<_> = match a {
-            State::Fix(path) => path.iter().copied().collect(),
-            _ => unreachable!("unreachable"),
+        let State::Certain(path) = &self.states[&self.end_pos] else {
+             return;
         };
+
+        let path: HashSet<_> = path.iter().collect();
 
         for y in 0..self.len_y {
             for x in 0..self.len_x {
-                let state = self.states.get(&Pos { x, y }).unwrap();
-
-                let s = self.data[y as usize][x as usize].to_string();
-                match state {
-                    State::Infinite => {
-                        print!("{}{}{}", color::Fg(color::White), s, style::Reset);
-                    }
-                    State::Temp(n) => {
-                        print!("{}{}{}", color::Fg(color::LightBlue), s, style::Reset);
-                    }
-                    State::Fix(_) => {
-                        if path.contains(&Pos { x, y }) {
-                            print!(
-                                "{}{}{}{}",
+                let pos = Pos { x, y };
+                let color_code = match &(self.states[&pos]) {
+                    State::Infinite => format!("{}", color::Fg(color::White)),
+                    State::Tentative(_) => format!("{}", color::Fg(color::LightBlue)),
+                    State::Certain(_) => {
+                        if path.contains(&pos) {
+                            format!(
+                                "{}{}",
                                 color::Bg(color::LightWhite),
                                 color::Fg(color::LightGreen),
-                                s,
-                                style::Reset
-                            );
+                            )
                         } else {
-                            print!("{}{}{}", color::Fg(color::LightGreen), s, style::Reset);
+                            format!("{}", color::Fg(color::LightGreen))
                         }
                     }
                 };
+
+                print!(
+                    "{}{}{}",
+                    color_code,
+                    self.data[y as usize][x as usize],
+                    style::Reset
+                );
             }
             println!()
         }
@@ -338,9 +244,8 @@ mod tests {
 
     #[test]
     fn test_simulate() {
-        let ret = simulate(include_str!("../../data/sample.txt").as_bytes()).unwrap();
-        println!("answer: {:?}", ret.len() - 1);
-        assert_eq!(ret.len() - 1, 31);
+        let path = simulate(include_str!("../../data/sample.txt").as_bytes()).unwrap();
+        assert_eq!(path.len() - 1, 31);
     }
 
     #[test]
@@ -354,11 +259,11 @@ tuvwj
 
         let finder = Finder::with_reader(height_map.as_bytes());
 
-        let candidates = finder.get_square(&Pos { x: 2, y: 1 });
-        assert_eq!(candidates, vec![Pos { x: 1, y: 1 }]);
+        let candidates = finder.get_square(&Pos { x: 0, y: 0 });
+        assert_eq!(candidates, vec![Pos { x: 0, y: 1 }]);
 
         let candidates = finder.get_square(&Pos { x: 4, y: 0 });
-        assert_eq!(candidates, vec![Pos { x: 3, y: 0 }, Pos { x: 4, y: 1 }]);
+        assert_eq!(candidates, vec![Pos { x: 4, y: 1 }]);
 
         let candidates = finder.get_square(&Pos { x: 0, y: 2 });
         assert_eq!(candidates, vec![Pos { x: 1, y: 2 }, Pos { x: 0, y: 1 }]);
