@@ -1,9 +1,8 @@
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::character::complete::{digit1, newline};
+use nom::character::complete::{digit1, multispace1};
 use nom::combinator::map;
 use nom::multi::{separated_list0, separated_list1};
-use nom::sequence::separated_pair;
 use nom::IResult;
 use std::cmp::{min, Ordering};
 use std::fs::File;
@@ -20,26 +19,29 @@ fn simulate(mut r: impl BufRead) -> usize {
     let mut text = String::new();
     r.read_to_string(&mut text).unwrap();
 
-    let (_, packets) = parse_text(&text).unwrap();
+    let (_, mut packets) = parse_text(&text).unwrap();
 
-    let mut sum = 0;
-    for (i, (left, right)) in packets.iter().enumerate() {
-        //println!("{}: {:?} vs {:?}", i, left, right);
+    // divider packets
+    let divider2 = Item::List(vec![Item::List(vec![Item::Value(2)])]);
+    let divider6 = Item::List(vec![Item::List(vec![Item::Value(6)])]);
+    packets.push(divider2.clone());
+    packets.push(divider6.clone());
 
-        match compare(left, right) {
-            Ordering::Equal => {
-                unreachable!("result none")
+    packets.sort_by(compare);
+
+    let decoder_key = packets
+        .iter()
+        .enumerate()
+        .filter_map(|(i, item)| {
+            if *item == divider2 || *item == divider6 {
+                Some(i + 1)
+            } else {
+                None
             }
-            Ordering::Less => {
-                println!("*{}: {:?} vs {:?} is correct", i + 1, left, right);
-                sum += i + 1;
-            }
-            Ordering::Greater => {
-                println!("{}: {:?} vs {:?} is incorrect", i + 1, left, right);
-            }
-        }
-    }
-    sum
+        })
+        .product();
+
+    decoder_key
 }
 
 fn parse_item_value(input: &str) -> IResult<&str, Item> {
@@ -54,11 +56,8 @@ fn parse_item_list(input: &str) -> IResult<&str, Item> {
     Ok((input, Item::List(list)))
 }
 
-fn parse_text(input: &str) -> IResult<&str, Vec<(Item, Item)>> {
-    separated_list1(
-        tag("\n\n"),
-        separated_pair(parse_item_list, newline, parse_item_list),
-    )(input)
+fn parse_text(input: &str) -> IResult<&str, Vec<Item>> {
+    separated_list1(multispace1, parse_item_list)(input)
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
