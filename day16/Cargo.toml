@@ -12,3 +12,4 @@ nom = "7.1"
 num = "0.4.0"
 
 termion = "2"
+petgraph = "0.6"
