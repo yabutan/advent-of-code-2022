@@ -1,20 +1,25 @@
+extern crate core;
+
+use itertools::Itertools;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::RangeInclusive;
 
 fn main() {
-    let r = BufReader::new(File::open("./day17/data/sample.txt").unwrap());
-    //let r = BufReader::new(File::open("./day17/data/input.txt").unwrap());
+    let r = BufReader::new(File::open("./day17/data/input.txt").unwrap());
 
     let directions = GasDirection::from_reader(r);
-    let mut stage: Stage<7, 10000> = Stage::new(directions);
-    for i in 0..1000_000_000_000usize {
-        if i % 100_000 == 0 {
-            println!("round:{}", i);
-        }
-        stage.round();
+
+    let mut analyzer = Analyzer { list: Vec::new() };
+
+    // 一定回数だけシミュレーションする。
+    let mut stage: Stage<7> = Stage::new(directions);
+    for _ in 0..5000 {
+        stage.round(&mut analyzer);
     }
-    println!("tall:{}", stage.highest_point + 1)
+
+    // 繰り返しパターンになっているので、繰り返し位置から答えを計算する。
+    let tall = analyzer.simulate::<2000, 10, 5000>(1000000000000);
+    println!("tall:{}", tall);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -156,18 +161,87 @@ enum Symbol {
     Rock,
 }
 
-struct Stage<const W: usize, const H: usize> {
-    data: [[Symbol; W]; H],
+struct Stage<const W: usize> {
+    data: Vec<[Symbol; W]>,
     highest_point: i64,
     appear_count: usize,
     gas_count: usize,
     gas_directions: Vec<GasDirection>,
 }
 
-impl<const W: usize, const H: usize> Stage<W, H> {
-    fn new(gas_directions: Vec<GasDirection>) -> Stage<W, H> {
+struct AnalyzerData {
+    x: usize,
+    y: usize,
+    highest_y: usize,
+    shape_type: ShapeType,
+}
+
+struct Analyzer {
+    list: Vec<AnalyzerData>,
+}
+
+impl Analyzer {
+    fn simulate<const BEGIN: usize, const MARK_SIZE: usize, const MAX: usize>(
+        &self,
+        target_round: usize,
+    ) -> usize {
+        let (begin, pattern_size) = self.find_pattern::<BEGIN, MARK_SIZE, MAX>();
+        println!("begin:{}, pattern_size:{}", begin, pattern_size);
+
+        let base = &self.list[BEGIN];
+        let next = &self.list[begin + pattern_size];
+        let y_size = next.highest_y - base.highest_y;
+
+        let j = ((target_round - 1) - begin) / pattern_size;
+        let i = ((target_round - 1) - begin) % pattern_size;
+        let target = &self.list[BEGIN + i];
+        println!(
+            "x:{}, y:{}, shape_type:{:?}",
+            target.x, target.highest_y, target.shape_type
+        );
+
+        target.highest_y + (y_size * j) + 1
+    }
+
+    fn push(&mut self, x: usize, y: usize, highest_y: usize, shape_type: ShapeType) {
+        self.list.push(AnalyzerData {
+            x,
+            y,
+            highest_y,
+            shape_type,
+        });
+    }
+
+    /// (begin, size)
+    fn find_pattern<const BEGIN: usize, const MARK_SIZE: usize, const MAX: usize>(
+        &self,
+    ) -> (usize, usize) {
+        let create_mark = |i: usize| {
+            self.list[i..(i + MARK_SIZE)]
+                .iter()
+                .map(|data| format!("{}{:?}", data.x, data.shape_type))
+                .join("")
+        };
+
+        let base_mark = create_mark(BEGIN);
+        let mut i = BEGIN + MARK_SIZE;
+        loop {
+            if i + MARK_SIZE >= MAX {
+                panic!("not found");
+            }
+
+            if base_mark == create_mark(i) {
+                return (BEGIN, i - BEGIN);
+            }
+            i += 1;
+        }
+    }
+}
+
+impl<const W: usize> Stage<W> {
+    fn new(gas_directions: Vec<GasDirection>) -> Stage<W> {
         Self {
-            data: [[Symbol::Air; W]; H],
+            data: vec![[Symbol::Air; W]; 10],
             highest_point: -1,
             appear_count: 0,
             gas_count: 0,
@@ -175,26 +249,15 @@ impl<const W: usize, const H: usize> Stage<W, H> {
         }
     }
 
-    fn get_data(&self, x: usize, y: usize) -> Symbol {
-        if self.highest_point - (H / 2) as i64 > y as i64 {
-            unreachable!("invalid access: {}", y);
-        }
-
-        let y = y % H;
-        self.data[y][x]
-    }
-
-    fn set_data(&mut self, x: usize, y: usize, s: Symbol) {
-        if self.highest_point - (H / 2) as i64 > y as i64 {
-            unreachable!("invalid");
-        }
-
-        let y = y % H;
-        self.data[y][x] = s;
-    }
-
     // appears and comes to rest
-    fn round(&mut self) {
+    fn round(&mut self, analyzer: &mut Analyzer) {
+        // extend buffer
+        if (self.highest_point + 10) as usize > self.data.len() {
+            for _ in 0..10 {
+                self.data.push([Symbol::Air; W]);
+            }
+        }
+
         // appear
         let shape = Shape::from_count(self.appear_count);
         self.appear_count += 1;
@@ -224,6 +287,12 @@ impl<const W: usize, const H: usize> Stage<W, H> {
             if self.hit_test(&shape, x, y - 1) {
                 // comes to rest
                 self.comes_to_rest(&shape, x, y);
+                analyzer.push(
+                    x as usize,
+                    y as usize,
+                    self.highest_point as usize,
+                    shape.shape_type,
+                );
                 break;
             }
             y -= 1;
@@ -236,7 +305,7 @@ impl<const W: usize, const H: usize> Stage<W, H> {
             let x = (x + pos.x) as usize;
             let y = (y + pos.y) as usize;
 
-            self.set_data(x, y, Symbol::Rock);
+            self.data[y][x] = Symbol::Rock;
 
             if y as i64 > self.highest_point {
                 self.highest_point = y as i64;
@@ -256,18 +325,17 @@ impl<const W: usize, const H: usize> Stage<W, H> {
             let x = x + pos.x;
             let y = y + pos.y;
 
-            if self.get_data(x as usize, y as usize) != Symbol::Air {
+            if self.data[y as usize][x as usize] != Symbol::Air {
                 return true;
             }
         }
         false
     }
 
-    fn draw(&self, range: RangeInclusive<usize>) {
-        for y in range.rev() {
-            for x in 0..W {
-                let s = self.get_data(x, y);
-                let c = match s {
+    fn draw(&self) {
+        for y in (0..self.data.len()).rev() {
+            for symbol in &self.data[y] {
+                let c = match symbol {
                     Symbol::Air => '.',
                     Symbol::Rock => '#',
                 };
@@ -283,62 +351,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sample() {
+    fn test_sample_for_part1() {
         let directions =
             GasDirection::from_reader(include_str!("../../data/sample.txt").as_bytes());
 
-        let mut stage: Stage<7, 10000> = Stage::new(directions);
-        for i in 0..1000000usize {
-            //if i % 100 == 0 {
-            println!("-- round {} -- ", i);
-            //}
-            stage.round();
-            //stage.draw(0usize..=20usize);
+        let mut analyzer = Analyzer { list: Vec::new() };
+        let mut stage: Stage<7> = Stage::new(directions);
+        for _ in 0..5000 {
+            stage.round(&mut analyzer);
         }
 
-        println!("tall:{}", stage.highest_point + 1)
+        let tall = analyzer.simulate::<2000, 10, 5000>(2022);
+        println!("tall:{}", tall);
+        assert_eq!(tall, 3068);
     }
 
     #[test]
-    fn test_data() {
-        let mut stage: Stage<7, 10> = Stage::new(vec![GasDirection::Left]);
+    fn test_sample_for_part2() {
+        let directions =
+            GasDirection::from_reader(include_str!("../../data/sample.txt").as_bytes());
 
-        stage.set_data(0, 0, Symbol::Rock);
-        stage.set_data(1, 9, Symbol::Rock);
-        stage.set_data(2, 10, Symbol::Rock);
-        stage.set_data(3, 11, Symbol::Rock);
-
-        println!("{:?}", stage.get_data(0, 0));
-        println!("{:?}", stage.get_data(1, 9));
-        println!("{:?}", stage.get_data(2, 10));
-        println!("{:?}", stage.get_data(3, 11));
-
-        for (i, x) in stage.data.iter().enumerate() {
-            println!("{:03} {:?}", i, x);
+        let mut analyzer = Analyzer { list: Vec::new() };
+        let mut stage: Stage<7> = Stage::new(directions);
+        for _ in 0..5000 {
+            stage.round(&mut analyzer);
         }
 
-        stage.highest_point = 10;
-
-        //println!("{:?}", stage.get_data(0, 0));
-        println!("{:?}", stage.get_data(1, 9));
-        println!("{:?}", stage.get_data(2, 10));
-        println!("{:?}", stage.get_data(3, 11));
-
-        stage.set_data(4, 8, Symbol::Rock);
-        stage.set_data(5, 10, Symbol::Rock);
-        stage.set_data(6, 19, Symbol::Rock);
-        for (i, x) in stage.data.iter().enumerate() {
-            println!("{:03} {:?}", i, x);
-        }
-
-        println!("{:?}", stage.get_data(4, 8));
-        println!("{:?}", stage.get_data(5, 10));
-        println!("{:?}", stage.get_data(6, 19));
+        let tall = analyzer.simulate::<2000, 20, 5000>(1000000000000);
+        println!("tall:{}", tall);
+        assert_eq!(tall, 1514285714288);
     }
 
     #[test]
     fn test_hit_test() {
-        let mut stage: Stage<7, 1000> = Stage::new(vec![GasDirection::Left]);
+        let mut stage: Stage<7> = Stage::new(vec![GasDirection::Left]);
 
         let shape = Shape::new(ShapeType::A);
         assert!(!stage.hit_test(&shape, 3, 0));
