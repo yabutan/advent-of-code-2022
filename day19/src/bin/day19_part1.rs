@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use itertools::Itertools;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete;
@@ -6,77 +9,136 @@ use nom::combinator::value;
 use nom::multi::separated_list1;
 use nom::sequence::{delimited, separated_pair};
 use nom::IResult;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{read_to_string, BufReader, Read};
+
+use crate::Robot::{ClayRobot, GeodeRobot, ObsidianRobot, OreRobot};
 
 fn main() {
-    let r = BufReader::new(File::open("./day19/data/input.txt").unwrap());
-    let input = read_to_string(r).unwrap();
-    let blueprints = Blueprint::parse_input(&input);
+    // TODO: まだ解けてない。
+    run_sample1();
 
-    for blueprint in blueprints {
-        println!("{:?}", blueprint);
-    }
+    // let r = BufReader::new(File::open("./day19/data/input.txt").unwrap());
+    // let input = read_to_string(r).unwrap();
+    // let blueprints = Blueprint::parse_input(&input);
+    //
+    // for blueprint in blueprints {
+    //     println!("{:?}", blueprint);
+    // }
 
     //println!("total: {}", total);
 }
 
-fn simulate(blueprint: &Blueprint) -> u32 {
-    let mut robots = vec![Robot::OreRobot];
-    let mut resources: HashMap<Resource, u32> = HashMap::new();
-    for minutes in 1..=24 {
-        println!("minute: {}", minutes);
+fn run_sample1() {
+    let input = include_str!("../../data/sample.txt");
+    let blueprints = Blueprint::parse_input(input);
 
-        // collecting
-        for robot in &robots {
-            match robot {
-                Robot::OreRobot => {
-                    let a = resources.entry(Resource::Ore).or_default();
-                    *a += 1;
-                }
-                Robot::ClayRobot => {
-                    let a = resources.entry(Resource::Clay).or_default();
-                    *a += 1;
-                }
-                Robot::ObsidianRobot => {
-                    let a = resources.entry(Resource::Obsidian).or_default();
-                    *a += 1;
-                }
-                Robot::GeodeRobot => {
-                    let a = resources.entry(Resource::Geode).or_default();
-                    *a += 1;
-                }
-            }
+    let mut results = Vec::new();
+    let process = Process::new(&blueprints[0]);
+    process.simulate(&State::default(), 24, &mut results);
+
+    // for state in &results {
+    //     println!("{:?}", state);
+    // }
+}
+
+struct Process<'a> {
+    blueprint: &'a Blueprint,
+}
+
+impl<'a> Process<'a> {
+    fn new(blueprint: &'a Blueprint) -> Process<'a> {
+        Self { blueprint }
+    }
+
+    fn create_robot(&self, state: &State, robot_to_want: &Robot) -> Option<State> {
+        let costs = &self.blueprint.costs[robot_to_want];
+        let can_create = costs.iter().all(|(resource, need)| {
+            let have = state.resources.get(resource).unwrap_or(&0);
+            *have >= *need
+        });
+
+        if !can_create {
+            return None;
         }
 
-        println!("resources: {:?}", resources);
+        let mut resources = state.resources.clone();
+        for (resource, need) in costs {
+            let have = resources.get_mut(resource).unwrap();
+            *have -= *need;
+        }
 
-        // creating robot
-        'creating: for robot in &[
-            Robot::GeodeRobot,
-            Robot::ObsidianRobot,
-            Robot::ClayRobot,
-            Robot::OreRobot,
-        ] {
-            for (resource, need) in &blueprint.costs[robot] {
-                // 材料足りてる場合
+        let mut robots = state.robots.clone();
+        robots
+            .entry(robot_to_want.clone())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
 
-                // 足りてない場合、下位のロボットを作る
+        Some(State { resources, robots })
+    }
 
-                let have = resources.entry(resource.clone()).or_default();
-                if *have > *need {
-                    *have -= need;
-                    // created geode robot
-                    robots.push(robot.clone());
-                    println!("created robot: {:?}", robot);
-                    break 'creating;
+    fn simulate(&self, state: &State, left_time: u32, results: &mut Vec<State>) {
+        if left_time == 0 {
+            println!("{:?}", state);
+            results.push(state.clone());
+            return;
+        }
+
+        // actions
+        let mut next_states: Vec<State> = vec![
+            self.create_robot(state, &GeodeRobot),
+            self.create_robot(state, &ObsidianRobot),
+            self.create_robot(state, &ClayRobot),
+            self.create_robot(state, &OreRobot),
+            Some(state.clone()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        for mut state in next_states {
+            state.collect();
+            self.simulate(&state, left_time - 1, results);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct State {
+    robots: HashMap<Robot, u32>,
+    resources: HashMap<Resource, u32>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            robots: vec![OreRobot].into_iter().map(|r| (r, 1)).collect(),
+            resources: HashMap::new(),
+        }
+    }
+}
+
+impl State {
+    fn collect(&mut self) {
+        for (robot, count) in &self.robots {
+            match robot {
+                OreRobot => {
+                    let have = self.resources.entry(Resource::Ore).or_default();
+                    *have += count;
+                }
+                ClayRobot => {
+                    let have = self.resources.entry(Resource::Clay).or_default();
+                    *have += count;
+                }
+                ObsidianRobot => {
+                    let have = self.resources.entry(Resource::Obsidian).or_default();
+                    *have += count;
+                }
+                GeodeRobot => {
+                    let have = self.resources.entry(Resource::Geode).or_default();
+                    *have += count;
                 }
             }
         }
     }
-
-    resources[&Resource::Geode]
 }
 
 #[derive(Debug)]
@@ -125,10 +187,10 @@ fn parse_costs(input: &str) -> IResult<&str, (Robot, Vec<(Resource, u32)>)> {
     let (input, robot) = delimited(
         tag("Each "),
         alt((
-            value(Robot::OreRobot, tag("ore robot")),
-            value(Robot::ClayRobot, tag("clay robot")),
-            value(Robot::ObsidianRobot, tag("obsidian robot")),
-            value(Robot::GeodeRobot, tag("geode robot")),
+            value(OreRobot, tag("ore robot")),
+            value(ClayRobot, tag("clay robot")),
+            value(ObsidianRobot, tag("obsidian robot")),
+            value(GeodeRobot, tag("geode robot")),
         )),
         tag(" costs "),
     )(input)?;
@@ -164,18 +226,9 @@ fn parse_blueprint(input: &str) -> IResult<&str, Blueprint> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::Resource::{Clay, Obsidian, Ore};
-    use crate::Robot::{ClayRobot, GeodeRobot, ObsidianRobot, OreRobot};
 
-    #[test]
-    fn test_sample1() {
-        let input = include_str!("../../data/sample.txt");
-        let blueprints = Blueprint::parse_input(input);
-
-        let ret = simulate(&blueprints[0]);
-        println!("ret: {}", ret);
-    }
+    use super::*;
 
     #[test]
     fn test_parse_blueprints() {
