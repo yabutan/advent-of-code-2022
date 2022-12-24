@@ -277,6 +277,10 @@ mod tests {
         let patterns = make_patterns(&valves);
         println!("pattern len: {}", patterns.len());
         assert_eq!(patterns.len(), 41);
+
+        for (a, b) in patterns {
+            println!("{:?} {:?}", a, b);
+        }
     }
 
     #[test]
