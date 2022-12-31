@@ -1,9 +1,12 @@
 Day 19: Not Enough Minerals
 =============================
 
+重たいのでリリースビルドして実行する。
 
-part 1: 2160
+```
+cargo build --release --bin day19_part1
+cargo build --release --bin day19_part2
 
-part 2: 13340
-
-
+./target/release/day19_part1
+./target/release/day19_part2
+```
