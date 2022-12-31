@@ -13,3 +13,4 @@ num = "0.4.0"
 
 termion = "2"
 petgraph = "0.6"
+rayon = "1.6.0"
