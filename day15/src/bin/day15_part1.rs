@@ -10,6 +10,8 @@ use nom::combinator::{opt, recognize};
 use nom::sequence::{preceded, separated_pair, tuple};
 use nom::IResult;
 
+use day15::CheckResult;
+
 fn main() -> anyhow::Result<()> {
     let r = BufReader::new(File::open("./day15/data/input.txt")?);
 
@@ -33,14 +35,6 @@ struct Data {
     sensor: (i32, i32),
     beacon: (i32, i32),
     distance: u32,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum CheckResult {
-    Sensor,
-    Beacon,
-    Cannot,
-    Possible,
 }
 
 fn check_pos(data_list: &[Data], pos: &(i32, i32)) -> CheckResult {

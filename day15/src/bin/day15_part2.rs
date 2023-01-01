@@ -49,14 +49,6 @@ struct Data {
     distance: u32,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum CheckResult {
-    Sensor,
-    Beacon,
-    Cannot,
-    Possible,
-}
-
 fn find_space<const W: i32>(range_list: &[RangeInclusive<i32>]) -> Option<i32> {
     for x in range_list {
         let rs = x.start() - 1;
