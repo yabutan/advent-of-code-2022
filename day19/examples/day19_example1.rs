@@ -4,7 +4,7 @@ use day19::Stone::Geode;
 use day19::{Blueprint, Processor, State};
 
 fn main() {
-    let input = include_str!("../../data/input.txt");
+    let input = include_str!("../data/sample.txt");
     let blueprints = Blueprint::parse_input(input);
 
     let score: u32 = blueprints
@@ -21,4 +21,5 @@ fn main() {
         .sum();
 
     println!("Score: {}", score);
+    assert_eq!(score, 33);
 }
