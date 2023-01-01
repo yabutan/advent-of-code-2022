@@ -59,7 +59,7 @@ fn parse(line: &str) -> (Shape, Shape) {
 }
 
 fn main() -> anyhow::Result<()> {
-    let r = BufReader::new(File::open("./day02/data/part1/input.txt").unwrap());
+    let r = BufReader::new(File::open("./day02/data/input.txt").unwrap());
 
     let mut sum = 0;
     for line in r.lines() {
@@ -77,7 +77,7 @@ fn main() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use crate::{calc_score, parse};
+    use super::*;
 
     #[test]
     fn test() {

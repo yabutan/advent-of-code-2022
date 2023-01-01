@@ -84,7 +84,7 @@ fn calc(r: impl BufRead) -> anyhow::Result<u32> {
 }
 
 fn main() -> anyhow::Result<()> {
-    let r = BufReader::new(File::open("./day02/data/part1/input.txt").unwrap());
+    let r = BufReader::new(File::open("./day02/data/input.txt").unwrap());
     let sum = calc(r)?;
     println!("sum: {}", sum);
     Ok(())
