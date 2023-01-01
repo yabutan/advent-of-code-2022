@@ -31,7 +31,7 @@ fn get_max_sum(r: impl BufRead) -> Result<u32> {
 }
 
 fn main() -> Result<()> {
-    let r = BufReader::new(fs::File::open("./day01/data/part1/input.txt").unwrap());
+    let r = BufReader::new(fs::File::open("./day01/data/input.txt").unwrap());
     let max = get_max_sum(r)?;
     println!("answer: {}", max);
     Ok(())

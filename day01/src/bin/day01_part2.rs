@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use anyhow::Result;
 
-fn get_elf(r: impl BufRead) -> Result<Vec<u32>> {
+fn get_sum_list(r: impl BufRead) -> Result<Vec<u32>> {
     let mut list = vec![];
     let mut sum = 0;
     for line in r.lines() {
@@ -27,7 +27,7 @@ fn get_elf(r: impl BufRead) -> Result<Vec<u32>> {
 }
 
 fn get_sum_of_top_tree(r: impl BufRead) -> Result<u32> {
-    let mut list = get_elf(r)?;
+    let mut list = get_sum_list(r)?;
     list.sort();
     list.reverse();
 
@@ -39,7 +39,7 @@ fn get_sum_of_top_tree(r: impl BufRead) -> Result<u32> {
 }
 
 fn main() -> Result<()> {
-    let r = BufReader::new(fs::File::open("./day01/data/part1/input.txt").unwrap());
+    let r = BufReader::new(fs::File::open("./day01/data/input.txt").unwrap());
     let sum = get_sum_of_top_tree(r)?;
     println!("answer: {}", sum);
     Ok(())
