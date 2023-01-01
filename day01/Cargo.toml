@@ -9,8 +9,5 @@ edition = "2021"
 anyhow = "1.0"
 itertools = "0.10"
 nom = "7.1"
-num = "0.4.0"
 
-termion = "2"
-petgraph = "0.6"
 
