@@ -1,98 +1,62 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-#[derive(Debug, PartialEq)]
-enum Shape {
-    Rock,
-    Paper,
-    Scissors,
+use day02::{Outcome, parse_shapes, Shape};
+
+/// 勝ち負け判定
+pub fn judge(opponent: &Shape, my_shape: &Shape) -> Outcome {
+    use Outcome::{Draw, Lose, Win};
+    use Shape::{Paper, Rock, Scissors};
+
+    match (opponent, my_shape) {
+        (Rock, Rock) => Draw,
+        (Rock, Paper) => Win,
+        (Rock, Scissors) => Lose,
+
+        (Paper, Rock) => Lose,
+        (Paper, Paper) => Draw,
+        (Paper, Scissors) => Win,
+
+        (Scissors, Rock) => Win,
+        (Scissors, Paper) => Lose,
+        (Scissors, Scissors) => Draw,
+    }
 }
 
-const LOST_POINT: u32 = 0;
-const DRAW_POINT: u32 = 3;
-const WIN_POINT: u32 = 6;
+fn simulate_part1(r: impl BufRead) -> u32 {
+    let rounds: Vec<(Shape, Shape)> = r
+        .lines()
+        .flatten()
+        .flat_map(|line| parse_shapes(&line))
+        .collect();
 
-const SHAPE_POINT_ROCK: u32 = 1;
-const SHAPE_POINT_PAPER: u32 = 2;
-const SHAPE_POINT_SCISSORS: u32 = 3;
-
-fn calc_score(opponent: &Shape, you: &Shape) -> u32 {
-    let shape_point = match you {
-        Shape::Rock => SHAPE_POINT_ROCK,
-        Shape::Paper => SHAPE_POINT_PAPER,
-        Shape::Scissors => SHAPE_POINT_SCISSORS,
-    };
-
-    let outcome_point = match (opponent, you) {
-        (Shape::Rock, Shape::Rock) => DRAW_POINT,
-        (Shape::Rock, Shape::Paper) => WIN_POINT,
-        (Shape::Rock, Shape::Scissors) => LOST_POINT,
-        (Shape::Paper, Shape::Rock) => LOST_POINT,
-        (Shape::Paper, Shape::Paper) => DRAW_POINT,
-        (Shape::Paper, Shape::Scissors) => WIN_POINT,
-        (Shape::Scissors, Shape::Rock) => WIN_POINT,
-        (Shape::Scissors, Shape::Paper) => LOST_POINT,
-        (Shape::Scissors, Shape::Scissors) => DRAW_POINT,
-    };
-
-    shape_point + outcome_point
-}
-
-fn parse(line: &str) -> (Shape, Shape) {
-    let mut iter = line.split_whitespace();
-
-    let opponent = match iter.next() {
-        Some("A") => Shape::Rock,
-        Some("B") => Shape::Paper,
-        Some("C") => Shape::Scissors,
-        _ => panic!("invalid input"),
-    };
-
-    let you = match iter.next() {
-        Some("X") => Shape::Rock,
-        Some("Y") => Shape::Paper,
-        Some("Z") => Shape::Scissors,
-        _ => panic!("invalid input"),
-    };
-
-    (opponent, you)
+    rounds
+        .iter()
+        .map(|(opponent, my_shape)| {
+            let outcome = judge(opponent, my_shape);
+            my_shape.get_score() + outcome.get_score()
+        })
+        .sum()
 }
 
 fn main() -> anyhow::Result<()> {
-    let r = BufReader::new(File::open("./day02/data/input.txt").unwrap());
+    let r = BufReader::new(File::open("./day02/data/input.txt")?);
 
-    let mut sum = 0;
-    for line in r.lines() {
-        let line = line?;
-
-        let (opponent, you) = parse(&line);
-        let score = calc_score(&opponent, &you);
-        println!("{:?} x {:?} = {}", opponent, you, score);
-        sum += score;
-    }
-    println!("sum: {}", sum);
+    let total_score = simulate_part1(r);
+    println!("total_score: {}", total_score);
 
     Ok(())
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test() {
-        let text = r#"A Y
-B X
-C Z
-"#;
+    fn test_sample1() {
+        let r = include_str!("../../data/sample.txt").as_bytes();
 
-        let mut sum = 0;
-        for line in text.trim().lines() {
-            let (opponent, you) = parse(line);
-            let score = calc_score(&opponent, &you);
-            println!("{:?} x {:?} = {}", opponent, you, score);
-            sum += score;
-        }
-        println!("sum: {}", sum);
+        let sum = simulate_part1(r);
+        assert_eq!(sum, 15);
     }
 }
