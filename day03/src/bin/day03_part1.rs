@@ -2,55 +2,50 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-fn get_priority(c: char) -> u32 {
-    match c {
-        'a'..='z' => u32::from(c) - u32::from('a') + 1,
-        'A'..='Z' => u32::from(c) - u32::from('A') + 27,
-        _ => panic!("invalid input {}", c),
-    }
-}
+use day03::{Priority, split_half};
 
-fn split_half(line: &str) -> (&str, &str) {
-    if line.len() % 2 != 0 {
-        panic!("invalid input '{}'", line);
-    }
-
-    let left = &line[0..line.len() / 2];
-    let right = &line[line.len() / 2..];
-    (left, right)
-}
-
-fn find_duplicated_char(left: &str, right: &str) -> char {
+/// 左と右で重複したアイテムを返す。
+/// ひとつだけ重複してることを期待する。
+fn find_duplicate_item_of_compartments(left: &str, right: &str) -> Result<char, String> {
+    // ハッシュセットにしてユニーク化
     let left: HashSet<char> = HashSet::from_iter(left.chars());
     let right: HashSet<char> = HashSet::from_iter(right.chars());
 
-    let duplicated: Vec<char> = left.intersection(&right).cloned().collect();
-    assert_eq!(duplicated.len(), 1);
+    // 重複したものだけを返す。
+    let duplicate_items: Vec<char> = left.intersection(&right).cloned().collect();
 
-    duplicated[0]
+    if duplicate_items.len() != 1 {
+        return Err(format!(
+            "expected only one item duplicated but them: {:?}",
+            duplicate_items
+        ));
+    }
+
+    Ok(duplicate_items[0])
 }
 
-fn calc_priority(r: impl BufRead) -> u32 {
-    let mut total = 0;
-    for line in r.lines() {
-        let line = line.unwrap();
-        if line.is_empty() {
-            continue;
-        }
+fn calc_part1(r: impl BufRead) -> u32 {
+    r.lines()
+        .flatten()
+        .map(|line| {
+            // 左と右に分割
+            let (left, right) = split_half(&line).expect("expected even length");
 
-        let (left, right) = split_half(&line);
-        let duplicated = find_duplicated_char(left, right);
-        let priority = get_priority(duplicated);
+            // 重複アイテムを取得
+            let duplicate_item = find_duplicate_item_of_compartments(left, right)
+                .expect("expected only one item duplicated");
 
-        println!("{} {}", duplicated, priority);
-        total += priority;
-    }
-    total
+            // プライオリティ値を取得
+            duplicate_item
+                .to_priority()
+                .expect("expected priority value")
+        })
+        .sum()
 }
 
 fn main() -> anyhow::Result<()> {
     let r = BufReader::new(File::open("./day03/data/input.txt")?);
-    let total = calc_priority(r);
+    let total = calc_part1(r);
     println!("answer: {}", total);
     Ok(())
 }
@@ -60,42 +55,26 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_get_priority() {
-        assert_eq!(get_priority('a'), 1);
-        assert_eq!(get_priority('z'), 26);
-        assert_eq!(get_priority('A'), 27);
-        assert_eq!(get_priority('Z'), 52);
+    fn test_find_duplicate_item_of_compartments() {
+        let (left, right) = split_half("vJrwpWtwJgWrhcsFMMfFFhFp").unwrap();
+        assert_eq!(find_duplicate_item_of_compartments(left, right), Ok('p'));
+
+        let (left, right) = split_half("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL").unwrap();
+        assert_eq!(find_duplicate_item_of_compartments(left, right), Ok('L'));
+
+        let (left, right) = split_half("PmmdzqPrVvPwwTWBwg").unwrap();
+        assert_eq!(find_duplicate_item_of_compartments(left, right), Ok('P'));
+
+        // 重複がない
+        assert!(find_duplicate_item_of_compartments("abc", "def").is_err());
+        // 重複が一つじゃない
+        assert!(find_duplicate_item_of_compartments("abc", "abd").is_err());
     }
 
     #[test]
-    fn test_split_half() {
-        assert_eq!(split_half("abcdef"), ("abc", "def"));
-        assert_eq!(split_half("af"), ("a", "f"));
-    }
-
-    #[test]
-    fn test_find_duplicated_char() {
-        let (left, right) = split_half("vJrwpWtwJgWrhcsFMMfFFhFp");
-        assert_eq!(find_duplicated_char(left, right), 'p');
-
-        let (left, right) = split_half("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL");
-        assert_eq!(find_duplicated_char(left, right), 'L');
-
-        let (left, right) = split_half("PmmdzqPrVvPwwTWBwg");
-        assert_eq!(find_duplicated_char(left, right), 'P');
-    }
-
-    #[test]
-    fn test_calc_priority() {
-        let text = r#"vJrwpWtwJgWrhcsFMMfFFhFp
-jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
-PmmdzqPrVvPwwTWBwg
-wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
-ttgJtRGJQctTZtZT
-CrZsJsPPZsGzwwsLwLmpwMDw
-"#;
-
-        let total = calc_priority(text.as_bytes());
+    fn test_sample1() {
+        let r = include_str!("../../data/sample.txt").as_bytes();
+        let total = calc_part1(r);
         assert_eq!(total, 157);
     }
 }
