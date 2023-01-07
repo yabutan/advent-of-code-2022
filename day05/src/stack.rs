@@ -1,9 +1,9 @@
-use itertools::{FoldWhile, Itertools};
 use std::io::BufRead;
 
-pub fn read_stacks(r: &mut impl BufRead) -> Vec<Vec<char>> {
-    use FoldWhile::{Continue, Done};
+use itertools::{FoldWhile, Itertools};
+use FoldWhile::{Continue, Done};
 
+pub fn read_stacks(r: &mut impl BufRead) -> Vec<Vec<char>> {
     // 空行まで読み込み
     let header = r
         .by_ref()
