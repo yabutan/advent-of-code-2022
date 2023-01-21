@@ -162,6 +162,7 @@ fn parse_monkey(input: &str) -> IResult<&str, Monkey> {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
     use itertools::Itertools;
 
     use super::*;
@@ -195,45 +196,43 @@ mod tests {
 
     #[test]
     fn test_parse_monkey() {
-        let text = r#"
-Monkey 0:
-  Starting items: 79, 98
-  Operation: new = old * 19
-  Test: divisible by 23
-    If true: throw to monkey 2
-    If false: throw to monkey 3
-"#
-        .trim_start_matches('\n');
+        let text = indoc! { r#"
+            Monkey 0:
+              Starting items: 79, 98
+              Operation: new = old * 19
+              Test: divisible by 23
+                If true: throw to monkey 2
+                If false: throw to monkey 3
+        "#};
 
         let (_, monkey) = parse_monkey(text).unwrap();
         assert_eq!(
             monkey,
             Monkey {
                 id: 0,
-                items: vec![79, 98,],
-                operation: (Operation::Multiply, Operand::Value(19,),),
+                items: vec![79, 98],
+                operation: (Operation::Multiply, Operand::Value(19),),
                 divisible: 23,
                 id_if_true: 2,
                 id_if_false: 3,
             }
         );
 
-        let text = r#"
-Monkey 2:
-  Starting items: 79, 60, 97
-  Operation: new = old * old
-  Test: divisible by 13
-    If true: throw to monkey 1
-    If false: throw to monkey 3 
-        "#
-        .trim_start_matches('\n');
+        let text = indoc! {  r#"
+            Monkey 2:
+              Starting items: 79, 60, 97
+              Operation: new = old * old
+              Test: divisible by 13
+                If true: throw to monkey 1
+                If false: throw to monkey 3 
+        "#};
         let (_, monkey) = parse_monkey(text).unwrap();
 
         assert_eq!(
             monkey,
             Monkey {
                 id: 2,
-                items: vec![79, 60, 97,],
+                items: vec![79, 60, 97],
                 operation: (Operation::Multiply, Operand::Old,),
                 divisible: 13,
                 id_if_true: 1,

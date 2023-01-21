@@ -107,6 +107,7 @@ name = "day05"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indoc",
  "itertools",
  "nom",
 ]
@@ -151,6 +152,7 @@ name = "day10"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indoc",
  "itertools",
  "nom",
 ]
@@ -160,6 +162,7 @@ name = "day11"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indoc",
  "itertools",
  "nom",
  "num",
@@ -170,6 +173,7 @@ name = "day12"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indoc",
  "itertools",
  "nom",
  "num",

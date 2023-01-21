@@ -5,8 +5,8 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::digit1;
 use nom::combinator::{map, opt, recognize, value};
-use nom::sequence::{preceded, tuple};
 use nom::IResult;
+use nom::sequence::{preceded, tuple};
 
 fn main() -> anyhow::Result<()> {
     let r = BufReader::new(File::open("./day10/data/input.txt")?);
@@ -97,6 +97,8 @@ fn parse_instruction(input: &str) -> IResult<&str, Instruction> {
 mod test {
     use std::io::BufWriter;
 
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -106,15 +108,14 @@ mod test {
         let mut w = BufWriter::new(Vec::new());
         draw(&mut w, r);
 
-        let text = r#"
-##..##..##..##..##..##..##..##..##..##..
-###...###...###...###...###...###...###.
-####....####....####....####....####....
-#####.....#####.....#####.....#####.....
-######......######......######......####
-#######.......#######.......#######.....
-"#
-        .trim_start();
+        let text = indoc! {r#"
+            ##..##..##..##..##..##..##..##..##..##..
+            ###...###...###...###...###...###...###.
+            ####....####....####....####....####....
+            #####.....#####.....#####.....#####.....
+            ######......######......######......####
+            #######.......#######.......#######.....
+        "#};
 
         assert_eq!(text, String::from_utf8(w.into_inner().unwrap()).unwrap());
     }

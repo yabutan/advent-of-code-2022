@@ -57,6 +57,8 @@ fn parse_crate_stacks(text: &str) -> Vec<Vec<char>> {
 
 #[cfg(test)]
 mod test {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -71,13 +73,12 @@ mod test {
 
     #[test]
     fn test_parse_crate_stacks() {
-        let stacks = parse_crate_stacks(
-            r#"    [D]
-[N] [C]
-[Z] [M] [P]
- 1   2   3
-"#,
-        );
+        let stacks = parse_crate_stacks(indoc! {r#"
+                [D]
+            [N] [C]
+            [Z] [M] [P]
+             1   2   3
+        "#});
 
         assert_eq!(stacks.len(), 3);
         assert_eq!(stacks[0], vec!['Z', 'N']);

@@ -243,6 +243,8 @@ impl Finder {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
@@ -259,12 +261,11 @@ mod tests {
 
     #[test]
     fn test_get_square() {
-        let height_map = r#"
-ryxxl
-szExk
-tuvwj
-"#
-        .trim();
+        let height_map = indoc! {r#"
+            ryxxl
+            szExk
+            tuvwj
+        "#};
 
         let finder = Finder::with_reader(height_map.as_bytes(), true);
 
