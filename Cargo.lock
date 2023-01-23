@@ -107,7 +107,7 @@ name = "day05"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indoc",
+ "indoc 1.0.8",
  "itertools",
  "nom",
 ]
@@ -125,7 +125,7 @@ name = "day07"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indoc",
+ "indoc 1.0.8",
  "nom",
 ]
 
@@ -134,6 +134,7 @@ name = "day08"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "indoc 2.0.0",
  "itertools",
  "nom",
 ]
@@ -152,7 +153,7 @@ name = "day10"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indoc",
+ "indoc 1.0.8",
  "itertools",
  "nom",
 ]
@@ -162,7 +163,7 @@ name = "day11"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indoc",
+ "indoc 1.0.8",
  "itertools",
  "nom",
  "num",
@@ -173,7 +174,7 @@ name = "day12"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indoc",
+ "indoc 1.0.8",
  "itertools",
  "nom",
  "num",
@@ -376,6 +377,12 @@ name = "indoc"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da2d6f23ffea9d7e76c53eee25dfb67bcd8fde7f1198b0855350698c9f07c780"
+
+[[package]]
+name = "indoc"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2b9d82064e8a0226fddb3547f37f28eaa46d0fc210e275d835f08cf3b76a7"
 
 [[package]]
 name = "itertools"
