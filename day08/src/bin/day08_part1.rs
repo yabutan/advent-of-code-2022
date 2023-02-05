@@ -24,48 +24,28 @@ impl VisibleMap {
 
         let mut data = vec![vec![false; x_len]; y_len];
 
+        let mut fold_func = |max, (x, y)| {
+            let value = grid.get(x, y);
+            if value > max {
+                data[y][x] = true;
+                value
+            } else {
+                max
+            }
+        };
+
         for y in 0..y_len {
             // left to right
-            let mut max = None;
-            for x in 0..x_len {
-                let value = grid.get(x, y).unwrap();
-                if max.is_none() || Some(value) > max {
-                    data[y][x] = true;
-                    max = Some(value);
-                }
-            }
-
+            (0..x_len).map(|x| (x, y)).fold(None, &mut fold_func);
             // right to left
-            let mut max = None;
-            for x in (0..x_len).rev() {
-                let value = grid.get(x, y).unwrap();
-                if max.is_none() || Some(value) > max {
-                    data[y][x] = true;
-                    max = Some(value);
-                }
-            }
+            (0..x_len).rev().map(|x| (x, y)).fold(None, &mut fold_func);
         }
 
         for x in 0..x_len {
             // top to bottom
-            let mut max = None;
-            for y in 0..y_len {
-                let value = grid.get(x, y).unwrap();
-                if max.is_none() || Some(value) > max {
-                    data[y][x] = true;
-                    max = Some(value);
-                }
-            }
-
+            (0..y_len).map(|y| (x, y)).fold(None, &mut fold_func);
             // bottom to top
-            let mut max = None;
-            for y in (0..y_len).rev() {
-                let value = grid.get(x, y).unwrap();
-                if max.is_none() || Some(value) > max {
-                    data[y][x] = true;
-                    max = Some(value);
-                }
-            }
+            (0..y_len).rev().map(|y| (x, y)).fold(None, &mut fold_func);
         }
 
         Self { data }
